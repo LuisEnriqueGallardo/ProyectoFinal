@@ -1,7 +1,8 @@
-from PySide6.QtWidgets import QDialog, QLabel, QPushButton, QLineEdit, QVBoxLayout, QComboBox, QTreeWidget, QListWidget, QStatusBar, QTreeWidgetItem, QMessageBox
+from PySide6.QtWidgets import QDialog, QLabel, QPushButton, QLineEdit, QVBoxLayout, QComboBox, QTreeWidget, QListWidget, QStatusBar, QTreeWidgetItem, QMessageBox, QListWidgetItem, QGridLayout
 from PySide6.QtGui import QFont
 from BasedeDatosBiblioteca import BasedeDatos as bdt
 from Objetosparabases import *
+from functools import partial as Partial
 
 bd = bdt()
 class EditarLibroDialog(QDialog):
@@ -26,8 +27,10 @@ class EditarLibroDialog(QDialog):
         self.entrada_titulo.setText(str(libro.nombre))
 
         self.etiqueta_editorial = QLabel("Editorial:")
-        self.entrada_editorial = QLineEdit()
-        self.entrada_editorial.setText(str(libro.editorial))
+        self.entrada_editorial = QComboBox()
+        if bd.obtenerEditoriales():
+            for editorial in bd.obtenerEditoriales():
+                self.entrada_editorial.addItem(editorial[0])
 
         self.etiqueta_anio_publicacion = QLabel("Año de Publicación:")
         self.entrada_anio_publicacion = QLineEdit()
@@ -78,7 +81,7 @@ class EditarLibroDialog(QDialog):
         Returns:
             Bool: Regresa verdadero si los campos están llenos, falso si no
         """
-        if self.entrada_titulo.text() and self.entrada_editorial.text() and self.entrada_anio_publicacion.text() and self.entrada_isbn.text() and self.entrada_genero.currentText() and self.entrada_cantidad_disponible.text() and self.entrada_cantidad_disponible > 0:
+        if self.entrada_titulo.text() and self.entrada_anio_publicacion.text() and self.entrada_isbn.text() and self.entrada_genero.currentText() and self.entrada_cantidad_disponible.text() and self.entrada_cantidad_disponible > 0:
             return True
         return False
 
@@ -89,7 +92,7 @@ class EditarLibroDialog(QDialog):
         if self.verificarCampos:
             id_libro = self.libro.id_libro
             titulo = self.entrada_titulo.text()
-            editorial = self.entrada_editorial.text()
+            editorial = self.entrada_editorial.currentText()
             anio_publicacion = int(self.entrada_anio_publicacion.text())
             isbn = self.entrada_isbn.text()
             genero = self.entrada_genero.currentText()
@@ -411,8 +414,8 @@ class MostrarLibro(QDialog):
             
             self.setFont("Segoe UI")
             self.setWindowTitle("Información del libro")
-            self.setGeometry(200, 100, 400, 100)
-            layout = QVBoxLayout()
+            self.setMinimumSize(900, 400)
+            layout = QGridLayout()
             
             self.etiqueta_titulo = QLabel(f"Título: {libro.nombre}")
             self.etiqueta_editorial = QLabel(f"Editorial: {libro.editorial}")
@@ -421,18 +424,34 @@ class MostrarLibro(QDialog):
             self.etiqueta_genero = QLabel(f"Género: {bd.consultarGeneroPorLibro(libro)}")
             self.etiqueta_cantidad_disponible = QLabel(f"Cantidad Disponible: {libro.cantidad_disponible}")
             
+            self.comentarios = QTreeWidget()
+            self.comentarios.setHeaderLabels(["Comentario", "Fecha"])
+            if bd.obtenerComentarioPorLibro(libro):
+                for comentario in bd.obtenerComentarioPorLibro(libro):
+                    print(comentario)
+                    item = QTreeWidgetItem(self.comentarios)
+                    item.setText(0, str(comentario[3]))
+                    item.setText(1, str(comentario[4]))
+                for i in range(2):
+                    self.comentarios.resizeColumnToContents(i)
+
             reservar = QPushButton("Reservar")
             if libro.cantidad_disponible == 0:
                 reservar.setEnabled(False)
             reservar.clicked.connect(self.reservar)
             
-            layout.addWidget(self.etiqueta_titulo)
-            layout.addWidget(self.etiqueta_editorial)
-            layout.addWidget(self.etiqueta_anio_publicacion)
-            layout.addWidget(self.etiqueta_isbn)
-            layout.addWidget(self.etiqueta_genero)
-            layout.addWidget(self.etiqueta_cantidad_disponible)
-            layout.addWidget(reservar)
+            self.comentario = QPushButton("Comentar")
+            self.comentario.clicked.connect(Partial(self.comentar, libro))
+            
+            layout.addWidget(self.etiqueta_titulo, 0, 0)
+            layout.addWidget(self.etiqueta_editorial, 1, 0)
+            layout.addWidget(self.etiqueta_anio_publicacion, 2, 0)
+            layout.addWidget(self.etiqueta_isbn, 3, 0)
+            layout.addWidget(self.etiqueta_genero, 4, 0)
+            layout.addWidget(self.etiqueta_cantidad_disponible, 5, 0)
+            layout.addWidget(self.comentarios, 6, 0, 1, 2)
+            layout.addWidget(reservar, 7, 0)
+            layout.addWidget(self.comentario, 7, 1)
             
             self.setLayout(layout)
             self.setFont(QFont("Times New Roman", 14))
@@ -448,6 +467,66 @@ class MostrarLibro(QDialog):
             self.accept()
         except Exception as e:
             print("Error: ", e)
+            self.reject()
+    
+    def comentar(self, libro):
+        try:
+            dialogo = ComentarLibro(self, libro)
+            dialogo.exec_()
+            self.actualizarCaja()
+        except Exception as e:
+            print("Error: ", e)
+            self.reject()
+    
+    def actualizarCaja(self):
+        try:
+            self.comentario.clear()
+            if bd.obtenerComentarioPorLibro(self.libro):
+                for comentario in bd.obtenerComentarioPorLibro(self.libro):
+                    item = QTreeWidgetItem(self.comentarios)
+                    item.setText(0, str(comentario[3]))
+                    item.setText(1, str(comentario[4]))
+                for i in range(2):
+                    self.comentarios.resizeColumnToContents(i)
+                    
+        except Exception as e:
+            print("Error: ", e)
+            self.reject()
+
+class ComentarLibro(QDialog):
+    def __init__(self, padre, libro: Libro):
+        super().__init__(padre)
+        self.parent = padre
+        self.libro = libro
+        self.setModal(True)
+        
+        self.setFont("Segoe UI")
+        self.setWindowTitle("Comentar Libro")
+        self.setGeometry(200, 100, 400, 100)
+        layout = QVBoxLayout()
+        
+        self.etiqueta_comentario = QLabel("Comentario:")
+        self.entrada_comentario = QLineEdit()
+        
+        self.boton = QPushButton("Aceptar")
+        self.boton.clicked.connect(self.aceptar)
+        
+        layout.addWidget(self.etiqueta_comentario)
+        layout.addWidget(self.entrada_comentario)
+        layout.addWidget(self.boton)
+        
+        self.setLayout(layout)
+        self.setFont(QFont("Times New Roman", 14))
+        self.setModal(True)
+    
+    def aceptar(self):
+        try:
+            comentario = Comentario(None, self.libro.id_libro, self.parent.parent.sesion.nombreUsuario, self.entrada_comentario.text(), None)
+            bd.crearComentario(comentario)
+            self.parent.parent.statusBar().showMessage("Comentario agregado")
+            self.accept()
+        except Exception as e:
+            print(e, f"Linea {e.__traceback__.tb_lineno}")
             self.reject()
 
 class MostrarUsuarios(QDialog):
@@ -580,7 +659,6 @@ class MostrarEmpleados(QDialog):
         empleado = bd.obtenerEmpleado(Empleado(item.text(0), item.text(1), item.text(2), item.text(3), item.text(4)))
         empleado = empleado[0]
         empleado = Empleado(empleado[0], empleado[1], empleado[2], empleado[3], empleado[4])
-        print(empleado)
         ventana = EditarEmpleado(self, empleado)
         ventana.exec_()
         
@@ -680,14 +758,17 @@ class MostrarReservaciones(QDialog):
         self.lista_reservaciones.setHeaderLabels(["No", "Usuario", "Libro", "Fecha de Reservación"])
         if bd.obtenerReservas():
             for reservacion in bd.obtenerReservas():
+                reserva = Reserva(str(reservacion[0]), str(reservacion[1]), str(reservacion[2]), str(reservacion[3]), reservacion[4])
                 item = QTreeWidgetItem(self.lista_reservaciones)
-                item.setText(0, str(reservacion[0]))
-                item.setText(1, str(reservacion[1]))
-                item.setText(2, str(reservacion[2]))
-                item.setText(3, str(reservacion[3]))
+                item.setText(0, str(reserva.id_reserva))
+                item.setText(1, bd.obtenerUsuario(Usuario(reserva.id_usuario, "", "", "", "", ""))[1])
+                item.setText(2, str(reserva.nombre))
+                item.setText(3, str(reserva.fecha))
                 self.lista_reservaciones.addTopLevelItem(item)
-            self.lista_reservaciones.itemDoubleClicked.connect(self.borrarReservacion)
-        
+
+                reserva = Reserva(str(reservacion[0]), str(reservacion[1]), str(reservacion[2]), str(reservacion[3]), str(reservacion[4]))
+                self.lista_reservaciones.itemDoubleClicked.connect(Partial(self.adminReserva, reserva))
+            
         layout.addWidget(self.etiqueta_reservaciones)
         layout.addWidget(self.lista_reservaciones)
         
@@ -705,26 +786,219 @@ class MostrarReservaciones(QDialog):
                 pass
             if bd.obtenerReservas():
                 for reservacion in bd.obtenerReservas():
+                    reserva = Reserva(str(reservacion[0]), str(reservacion[1]), str(reservacion[2]), str(reservacion[3]), reservacion[4])
                     item = QTreeWidgetItem(self.lista_reservaciones)
-                    item.setText(0, str(reservacion[0]))
-                    item.setText(1, str(reservacion[1]))
-                    item.setText(2, str(reservacion[2]))
-                    item.setText(3, str(reservacion[3]))
+                    item.setText(0, str(reserva.id_reserva))
+                    item.setText(1, bd.obtenerUsuario(Usuario(reserva.id_usuario, "", "", "", "", ""))[1])
+                    item.setText(2, str(reserva.nombre))
+                    item.setText(3, str(reserva.fecha))
                     self.lista_reservaciones.addTopLevelItem(item)
-                self.lista_reservaciones.itemDoubleClicked.connect(self.borrarReservacion)
-                
+
+                    reserva = Reserva(str(reservacion[0]), str(reservacion[1]), str(reservacion[2]), str(reservacion[3]), str(reservacion[4]))
+                    self.lista_reservaciones.itemDoubleClicked.connect(Partial(self.adminReserva, reserva))
+        
             for i in range(3):
                 self.lista_reservaciones.resizeColumnToContents(i)
             self.lista_reservaciones.header().setStyleSheet("QHeaderView::section { background-color: #c7fa9c }")
         except Exception as e:
             print(e, f"Linea {e.__traceback__.tb_lineno}")
     
-    def borrarReservacion(self):
-        QMessageBox.warning(self, "Eliminar", "¿Estás seguro de eliminar la reservación?", QMessageBox.Yes | QMessageBox.No)
-        if QMessageBox.Yes:
+    def adminReserva(self, reserva: Reserva, _, __):
+        box = QMessageBox(text="¿Qué deseas hacer con la reservación?",)
+        eliminar = box.addButton("Eliminar", QMessageBox.YesRole)
+        prestar = box.addButton("Hacer prestamo", QMessageBox.NoRole)
+        box.exec_()
+        
+        if box.clickedButton() == eliminar:
             item = self.lista_reservaciones.currentItem()
-            id_libro = bd.obtenerLibro(Libro("", item.text(2), "", "", "", "", ""))
-            bd.eliminarReserva(item.text(0), Libro(id_libro[0], id_libro[1], id_libro[2], id_libro[3], id_libro[4], None, id_libro[5]))
+            id_libro = bd.obtenerLibro(Libro("", reserva.nombre, "", "", "", "", ""))
+            bd.eliminarReserva(reserva.id_reserva, Libro(id_libro[0], id_libro[1], id_libro[2], id_libro[3], id_libro[4], None, id_libro[5]))
+            self.actualizar()
+            
+        elif box.clickedButton() == prestar:
+            item = self.lista_reservaciones.currentItem()
+            libro = bd.obtenerLibro(Libro("", reserva.nombre, "", "", "", "", ""))
+            usuario = bd.obtenerUsuario(Usuario(reserva.id_usuario, "", "", "", "", ""))
+            reserva.id_usuario = usuario[0]
+            bd.crearPrestamo(reserva)
+            bd.eliminarReserva(reserva.id_reserva, Libro(libro[0], libro[1], libro[2], libro[3], libro[4], None, libro[5]))
             self.actualizar()
         else:
             pass
+        
+class MostrarLibrosPrestados(QDialog):
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.parent = parent
+        self.setModal(True)
+        self.setMinimumSize(800, 600)
+        
+        self.setFont("Segoe UI")
+        self.setWindowTitle("Libros Prestados")
+        self.setGeometry(200, 100, 400, 100)
+        layout = QVBoxLayout()
+        
+        self.etiqueta_libros_prestados = QLabel("Libros Prestados:")
+        self.lista_libros_prestados = QTreeWidget()
+        self.lista_libros_prestados.setHeaderLabels(["No", "Usuario", "Libro", "Fecha de Préstamo", "Fecha de Devolución"])
+        if bd.obtenerPrestamos():
+            for prestamo in bd.obtenerPrestamos():
+                item = QTreeWidgetItem(self.lista_libros_prestados)
+                item.setText(0, str(prestamo[0]))
+                item.setText(1, str(bd.obtenerUsuarioPorID(prestamo[1])[1]))
+                item.setText(2, str(bd.obtenerLibroPorID(prestamo[2])[1]))
+                item.setText(3, str(prestamo[3]))
+                item.setText(4, str(prestamo[4]))
+                self.lista_libros_prestados.addTopLevelItem(item)
+            self.lista_libros_prestados.itemDoubleClicked.connect(Partial(self.borrarPrestamo, item))
+        
+        layout.addWidget(self.etiqueta_libros_prestados)
+        layout.addWidget(self.lista_libros_prestados)
+        
+        self.setLayout(layout)
+        for i in range(5):
+            self.lista_libros_prestados.resizeColumnToContents(i)
+        self.lista_libros_prestados.header().setStyleSheet("QHeaderView::section { background-color: #c7fa9c }")
+    
+    def actualizar(self):
+        try:
+            self.lista_libros_prestados.clear()
+            try:
+                self.lista_libros_prestados.itemDoubleClicked.disconnect()
+            except:
+                pass
+            if bd.obtenerPrestamos():
+                for prestamo in bd.obtenerPrestamos():
+                    item = QTreeWidgetItem(self.lista_libros_prestados)
+                    item.setText(0, str(prestamo[0]))
+                    item.setText(1, str(bd.obtenerUsuarioPorID(prestamo[1])[1]))
+                    item.setText(2, str(bd.obtenerLibroPorID(prestamo[2])[1]))
+                    item.setText(3, str(prestamo[3]))
+                    item.setText(4, str(prestamo[4]))
+                    self.lista_libros_prestados.addTopLevelItem(item)
+                self.lista_libros_prestados.itemDoubleClicked.connect(Partial(self.borrarPrestamo, item))
+        except Exception as e:
+            print(e, f"Linea {e.__traceback__.tb_lineno}")
+    
+    def borrarPrestamo(self, item: QTreeWidgetItem, _, __):
+        print(item.text(0))
+        QMessageBox.warning(self, "Eliminar", "¿Estás seguro de eliminar el préstamo?", QMessageBox.Yes | QMessageBox.No)
+        if QMessageBox.Yes:
+            if bd.obtenerLibro(Libro("", item.text(2), "", "", "", "", "")):
+                libro = bd.obtenerLibro(Libro("", item.text(2), "", "", "", "", ""))
+                bd.eliminarPrestamo(item.text(0), Libro(libro[0], libro[1], libro[2], libro[3], libro[4], None, libro[5]))
+                self.actualizar()
+        else:
+            pass
+
+class MostrarMultas(QDialog):
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.parent = parent
+        self.setModal(True)
+        self.setMinimumSize(800, 600)
+        
+        self.setFont("Segoe UI")
+        self.setWindowTitle("Multas")
+        self.setGeometry(200, 100, 400, 100)
+        layout = QVBoxLayout()
+        
+        crearMulta = QPushButton("Crear Multa", self)
+        crearMulta.clicked.connect(self.crearMulta)
+        
+        self.etiqueta_multas = QLabel("Multas:")
+        self.lista_multas = QTreeWidget()
+        self.lista_multas.setHeaderLabels(["No", "Usuario", "Monto", "Fecha de Pago"])
+        if bd.obtenerMultas():
+            for multa in bd.obtenerMultas():
+                item = QTreeWidgetItem(self.lista_multas)
+                item.setText(0, str(multa[0]))
+                item.setText(1, str(bd.obtenerUsuarioPorID(multa[1])[1]))
+                item.setText(2, str(multa[2]))
+                item.setText(3, str(multa[3]))
+                self.lista_multas.addTopLevelItem(item)
+            self.lista_multas.itemDoubleClicked.connect(Partial(self.pagarMulta, item))
+        
+        layout.addWidget(self.etiqueta_multas)
+        layout.addWidget(self.lista_multas)
+        
+        self.setLayout(layout)
+        for i in range(5):
+            self.lista_multas.resizeColumnToContents(i)
+        self.lista_multas.header().setStyleSheet("QHeaderView::section { background-color: #c7fa9c }")
+    
+    def actualizar(self):
+        try:
+            self.lista_multas.clear()
+            try:
+                self.lista_multas.itemDoubleClicked.disconnect()
+            except:
+                pass
+            if bd.obtenerMultas():
+                for multa in bd.obtenerMultas():
+                    item = QTreeWidgetItem(self.lista_multas)
+                    item.setText(0, str(multa[0]))
+                    item.setText(1, str(bd.obtenerUsuarioPorID(multa[1])[1]))
+                    item.setText(2, str(multa[2]))
+                    item.setText(3, str(multa[3]))
+                    self.lista_multas.addTopLevelItem(item)
+                self.lista_multas.itemDoubleClicked.connect(Partial(self.pagarMulta, item))
+        except Exception as e:
+            print(e, f"Linea {e.__traceback__.tb_lineno}")
+            
+    def pagarMulta(self, item: QTreeWidgetItem, _, __):
+        QMessageBox.warning(self, "Pagar", "¿Estás seguro de pagar la multa?", QMessageBox.Yes | QMessageBox.No)
+        if QMessageBox.Yes:
+            try:
+                bd.borrarMulta(item.text(0))
+                self.actualizar()
+            except Exception as e:
+                print("Error: ", e)
+        else:
+            pass
+    
+    def crearMulta(self):
+        dialogo = CrearMulta(self)
+        dialogo.exec_()
+        
+class CrearMulta(QDialog):
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.parent = parent
+        self.setModal(True)
+        
+        self.setFont("Segoe UI")
+        self.setWindowTitle("Crear Multa")
+        self.setGeometry(200, 100, 600, 100)
+        layout = QVBoxLayout()
+        
+        self.etiqueta_usuario = QLabel("Usuario:")
+        self.entrada_usuario = QComboBox()
+        if bd.obtenerUsuarios():
+            for usuario in bd.obtenerUsuarios():
+                self.entrada_usuario.addItem(usuario[0])
+        
+        self.etiqueta_monto = QLabel("Monto:")
+        self.entrada_monto = QLineEdit()
+        
+        self.boton = QPushButton("Aceptar")
+        self.boton.clicked.connect(self.crear)
+        
+        layout.addWidget(self.etiqueta_usuario)
+        layout.addWidget(self.entrada_usuario)
+        layout.addWidget(self.etiqueta_monto)
+        layout.addWidget(self.entrada_monto)
+        layout.addWidget(self.boton)
+        
+        self.setLayout(layout)
+    
+    def crear(self):
+        try:
+            usuario = bd.obtenerUsuario(Usuario(self.entrada_usuario.currentText(), "", "", "", "", ""))
+            multa = Multa(None, usuario[0], self.entrada_monto.text(), None)
+            bd.crearMulta(multa)
+            self.parent.actualizar()
+            self.accept()
+        except Exception as e:
+            print("Error: ", e)
+            self.reject()

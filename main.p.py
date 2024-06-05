@@ -13,7 +13,7 @@ from Dialogos import *
 bd = bdt()
 global sesionIniciada
 sesionIniciada = False
-fuente = QFont("Times New Roman", 12)
+fuente = QFont("Arial", 12)
         
 class VentanaPrincipal(QMainWindow):
     def __init__(self):
@@ -38,12 +38,11 @@ class VentanaPrincipal(QMainWindow):
         self.menuSuperior = self.menuBar()
         self.menuArchivo = self.menuSuperior.addMenu("Insertar")
         self.menuEditar = self.menuSuperior.addMenu("Editar")
-        self.menuAyuda = self.menuSuperior.addMenu("Ayuda")
         
         self.borrar = QShortcut(QKeySequence(Qt.Key_Delete), self)
                 
         self.menuPrincipal = QComboBox()
-        elementosMenu = ["Libros", "Editorial", "Generos", "Comentarios", "Autores"]
+        elementosMenu = ["Libros", "Editorial", "Generos", "Autores"]
         
         for elemento in elementosMenu:
             self.menuPrincipal.addItem(elemento)
@@ -139,10 +138,6 @@ class VentanaPrincipal(QMainWindow):
                         self.buttonLayout.addWidget(item)
                         item.clicked.connect(partial(self.seleccionarGenero, genero=genero[0]))
                 return
-        elif index == "comentarios":
-            self.etiquetaPrincipal.setText("Comentarios")
-            self.arbol.setHeaderLabels(["Libro", "Usuario", "Comentario"])
-            return
 
     def login(self):
         """
@@ -161,20 +156,45 @@ class VentanaPrincipal(QMainWindow):
             
             if (bd.usuarioLogueado == 1 or bd.usuarioLogueado == 2) and not sesionIniciada:
                 sesionIniciada = True
+
                 self.borrar.activated.connect(self.eliminar_libro)
                 self.menuArchivo.addAction("Ingresar libro").triggered.connect(self.ingresarLibro)
                 self.editarBoton = self.menuEditar.addAction("Editar")
                 
-                staff = self.menuSuperior.addMenu("Staff")
-                
+                staff = self.menuSuperior.addMenu("Staff")                
                 staff.addAction("Usuarios").triggered.connect(lambda: self.mostrarUsuarios())
                 staff.addAction("Reservas").triggered.connect(lambda: self.mostrarReservas())
+                staff.addAction("Prestamos").triggered.connect(lambda: self.mostrarPrestamos())
+                staff.addAction("Multas").triggered.connect(lambda: self.mostrarMultas())
+
                 self.editarActual()
                 if bd.usuarioLogueado == 2:
                     administracion = self.menuSuperior.addMenu("Administración")
+                    
                     empleados = administracion.addAction("Empleados")
                     empleados.triggered.connect(lambda: self.mostrarEmpleados())
+                    
                     self.editarActual()
+        except Exception as e:
+            print(e, f"Linea {e.__traceback__.tb_lineno}")
+
+    def mostrarMultas(self):
+        """
+        Muestra la ventana de multas
+        """
+        try:
+            ventanaMultas = MostrarMultas(self)
+            ventanaMultas.exec()
+        except Exception as e:
+            print(e, f"Linea {e.__traceback__.tb_lineno}")
+
+    def mostrarPrestamos(self):
+        """
+        Muestra la ventana de prestamos
+        """
+        try:
+            ventanaPrestamos = MostrarLibrosPrestados(self)
+            ventanaPrestamos.exec()
         except Exception as e:
             print(e, f"Linea {e.__traceback__.tb_lineno}")
 

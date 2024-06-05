@@ -41,3 +41,35 @@ class Empleado:
         self.apellido = apellido
         self.nombreUsuario = nombreUsuario
         self.administrador = administrador
+        
+class Reserva:
+    """
+    Objeto para manejar las reservas y sus atributos
+    """
+    def __init__(self, id_reserva, id_usuario, id_libro, nombre, fecha):
+        self.id_reserva = id_reserva
+        self.id_usuario = id_usuario
+        self.id_libro = id_libro
+        self.nombre = nombre
+        self.fecha = fecha
+
+class Multa:
+    """
+    Objeto para manejar las multas y sus atributos
+    """
+    def __init__(self, id_multa, id_usuario, cantidad, fecha):
+        self.id_multa = id_multa
+        self.id_usuario = id_usuario
+        self.cantidad = cantidad
+        self.fecha = fecha
+
+class Comentario:
+    """
+    Objeto para manejar los comentarios y sus atributos
+    """
+    def __init__(self, id_comentario, id_libro, id_usuario, comentario, fecha):
+        self.id_comentario = id_comentario
+        self.id_libro = id_libro
+        self.id_usuario = id_usuario
+        self.comentario = comentario
+        self.fecha = fecha
