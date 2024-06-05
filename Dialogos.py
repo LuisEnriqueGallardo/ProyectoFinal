@@ -105,6 +105,11 @@ class EditarLibroDialog(QDialog):
             self.statusbar.showMessage("Por favor, llene todos los campos correctamente o verifique sus datos.")
 
 class AutorNuevo(QDialog):
+    """Clase para la ventana de añadir autores a la biblioteca
+
+    Args:
+        QDialog (): Ventana de dialogo
+    """
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setFont("Segoe UI")
@@ -150,6 +155,11 @@ class AutorNuevo(QDialog):
         self.reject()
         
 class EditorialNuevo(QDialog):
+    """Clase para la ventana de añadir editoriales a la biblioteca
+    
+    Args:
+        QDialog (): Ventana de dialogo
+    """
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setFont("Segoe UI")
@@ -194,6 +204,11 @@ class EditorialNuevo(QDialog):
         self.reject()
         
 class GeneroNuevo(QDialog):
+    """Clase para la ventana de añadir géneros a la biblioteca
+
+    Args:
+        QDialog (): Ventana de dialogo
+    """
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setFont("Segoe UI")
@@ -238,6 +253,11 @@ class GeneroNuevo(QDialog):
         self.reject()
 
 class EditarAutor(QDialog):
+    """Clase para la ventana de edición de autores de la biblioteca
+
+    Args:
+        QDialog (): Ventana de dialogo
+    """
     def __init__(self, padre, autor: Autor):
         super().__init__(padre)
         self.parent = padre
@@ -274,6 +294,11 @@ class EditarAutor(QDialog):
             self.reject()
             
 class EditarEditorial(QDialog):
+    """Clase para la ventana de edición de editoriales de la biblioteca
+
+    Args:
+        QDialog (): Ventana de dialogo
+    """
     def __init__(self, padre, editorial: str):
         super().__init__(padre)
         self.parent = padre
@@ -308,6 +333,11 @@ class EditarEditorial(QDialog):
             self.reject() 
 
 class EditarGenero(QDialog):
+    """Clase para la ventana de edición de géneros de la biblioteca
+
+    Args:
+        QDialog (): Ventana de dialogo
+    """
     def __init__(self, padre, genero: str):
         super().__init__(padre)
         self.parent = padre
@@ -332,6 +362,8 @@ class EditarGenero(QDialog):
         self.setLayout(layout)
 
     def aceptar(self):
+        """Función para aceptar los cambios en la base de datos
+        """
         try:
             nombre = self.entrada.text()
             bd.actualizarGenero(self.genero, nombre)
@@ -343,6 +375,11 @@ class EditarGenero(QDialog):
             self.reject()
 
 class EditarUsuario(QDialog):
+    """Clase para la ventana de edición de usuarios de la biblioteca
+
+    Args:
+        QDialog (): Ventana de dialogo
+    """
     def __init__(self, padre, usuario: Usuario):
         super().__init__(padre)
         self.parent = padre
@@ -390,6 +427,8 @@ class EditarUsuario(QDialog):
         self.setLayout(layout)
 
     def aceptar(self):
+        """Función para aceptar los cambios en la base de datos
+        """
         try:
             nombreUsuario = self.entrada_usuario.text()
             nombre = self.entrada_nombre.text()
@@ -405,6 +444,11 @@ class EditarUsuario(QDialog):
             self.reject()
 
 class MostrarLibro(QDialog):
+    """Clase para la ventana de información de libros
+
+    Args:
+        QDialog (): Ventana de dialogo
+    """
     def __init__(self, padre, libro: Libro):
         super().__init__(padre)
         try:
@@ -460,6 +504,8 @@ class MostrarLibro(QDialog):
             print(e, f"Linea {e.__traceback__.tb_lineno}")
     
     def reservar(self):
+        """Función para reservar un libro
+        """
         try:
             bd.reservarLibro(self.libro, self.parent.sesion)
             self.parent.statusBar().showMessage("Libro reservado")
@@ -470,6 +516,11 @@ class MostrarLibro(QDialog):
             self.reject()
     
     def comentar(self, libro):
+        """Función para comentar un libro
+
+        Args:
+            libro (Libro): Libro a comentar
+        """
         try:
             dialogo = ComentarLibro(self, libro)
             dialogo.exec_()
@@ -479,6 +530,8 @@ class MostrarLibro(QDialog):
             self.reject()
     
     def actualizarCaja(self):
+        """Actualiza la caja de comentarios
+        """
         try:
             self.comentario.clear()
             if bd.obtenerComentarioPorLibro(self.libro):
@@ -494,6 +547,11 @@ class MostrarLibro(QDialog):
             self.reject()
 
 class ComentarLibro(QDialog):
+    """Clase para la ventana de comentarios de libros
+
+    Args:
+        QDialog (): Ventana de dialogo
+    """
     def __init__(self, padre, libro: Libro):
         super().__init__(padre)
         self.parent = padre
@@ -530,6 +588,11 @@ class ComentarLibro(QDialog):
             self.reject()
 
 class MostrarUsuarios(QDialog):
+    """Clase para la ventana de usuarios de la biblioteca
+
+    Args:
+        QDialog (): Ventana de dialogo
+    """
     def __init__(self, parent):
         super().__init__(parent)
         self.parent = parent
@@ -564,6 +627,8 @@ class MostrarUsuarios(QDialog):
         self.lista_usuarios.itemDoubleClicked.connect(self.editarUsuario)
         
     def editarUsuario(self):
+        """Función para editar un usuario
+        """
         try:
             usuario = self.lista_usuarios.currentItem()
             usuario = Usuario(usuario.text(0), usuario.text(1), usuario.text(2), usuario.text(3), usuario.text(4))
@@ -576,6 +641,8 @@ class MostrarUsuarios(QDialog):
             print(e, f"Linea {e.__traceback__.tb_lineno}")
     
     def actualizar(self):
+        """Actualiza la lista de usuarios
+        """
         try:
             self.lista_usuarios.clear()
             if bd.obtenerUsuarios():
@@ -594,6 +661,11 @@ class MostrarUsuarios(QDialog):
             print(e, f"Linea {e.__traceback__.tb_lineno}")
         
 class MostrarUsuarioUnico(QDialog):
+    """Clase para mostrar la información de un usuario
+
+    Args:
+        QDialog (): Ventana de dialogo
+    """
     def __init__(self, parent, usuario: Usuario):
         super().__init__(parent)
         self.parent = parent
@@ -622,6 +694,11 @@ class MostrarUsuarioUnico(QDialog):
         self.setModal(True)
  
 class MostrarEmpleados(QDialog):
+    """Clase para la ventana de empleados de la biblioteca
+
+    Args:
+        QDialog (): Ventana de dialogo
+    """
     def __init__(self, parent):
         super().__init__(parent)
         self.parent = parent
@@ -656,6 +733,11 @@ class MostrarEmpleados(QDialog):
         self.lista_usuarios.header().setStyleSheet("QHeaderView::section { background-color: #c7fa9c }")
         
     def editarEmpleado(self, item: QTreeWidgetItem):
+        """Función para editar un empleado
+
+        Args:
+            item (QTreeWidgetItem): Elemento seleccionado
+        """
         empleado = bd.obtenerEmpleado(Empleado(item.text(0), item.text(1), item.text(2), item.text(3), item.text(4)))
         empleado = empleado[0]
         empleado = Empleado(empleado[0], empleado[1], empleado[2], empleado[3], empleado[4])
@@ -663,6 +745,8 @@ class MostrarEmpleados(QDialog):
         ventana.exec_()
         
     def actualizar(self):
+        """Actualiza la lista de empleados
+        """
         self.lista_usuarios.clear()
         if bd.obtenerEmpleados():
             for usuario in bd.obtenerEmpleados():
@@ -680,6 +764,11 @@ class MostrarEmpleados(QDialog):
         self.lista_usuarios.header().setStyleSheet("QHeaderView::section { background-color: #c7fa9c }")
 
 class EditarEmpleado(QDialog):
+    """Clase para la ventana de edición de empleados de la biblioteca
+
+    Args:
+        QDialog (): Ventana de dialogo
+    """
     def __init__(self, padre, empleado: Empleado):
         super().__init__(padre)
         self.parent = padre
@@ -728,6 +817,8 @@ class EditarEmpleado(QDialog):
         self.setLayout(layout)  
 
     def aceptar(self):
+        """Función para aceptar los cambios en la base de datos
+        """
         try:
             nombre = self.entrada_nombre.text()
             apellido = self.entrada_apellido.text()
@@ -742,6 +833,11 @@ class EditarEmpleado(QDialog):
             print("Error: ", e)
 
 class MostrarReservaciones(QDialog):
+    """Muestra las reservaciones en la base de datos
+
+    Args:
+        QDialog (): Ventana de dialogo
+    """
     def __init__(self, parent):
         super().__init__(parent)
         self.parent = parent
@@ -778,6 +874,8 @@ class MostrarReservaciones(QDialog):
         self.lista_reservaciones.header().setStyleSheet("QHeaderView::section { background-color: #c7fa9c }")
     
     def actualizar(self):
+        """Actualiza la lista de reservaciones
+        """
         try:
             self.lista_reservaciones.clear()
             try:
@@ -804,6 +902,11 @@ class MostrarReservaciones(QDialog):
             print(e, f"Linea {e.__traceback__.tb_lineno}")
     
     def adminReserva(self, reserva: Reserva, _, __):
+        """Función para administrar las reservaciones
+
+        Args:
+            reserva (Reserva): Reservación seleccionada
+        """
         box = QMessageBox(text="¿Qué deseas hacer con la reservación?",)
         eliminar = box.addButton("Eliminar", QMessageBox.YesRole)
         prestar = box.addButton("Hacer prestamo", QMessageBox.NoRole)
@@ -827,6 +930,11 @@ class MostrarReservaciones(QDialog):
             pass
         
 class MostrarLibrosPrestados(QDialog):
+    """Muestra los libros prestados en la base de datos
+
+    Args:
+        QDialog (): Ventana de dialogo
+    """
     def __init__(self, parent):
         super().__init__(parent)
         self.parent = parent
@@ -861,6 +969,8 @@ class MostrarLibrosPrestados(QDialog):
         self.lista_libros_prestados.header().setStyleSheet("QHeaderView::section { background-color: #c7fa9c }")
     
     def actualizar(self):
+        """Actualiza la lista de libros prestados
+        """
         try:
             self.lista_libros_prestados.clear()
             try:
@@ -881,6 +991,12 @@ class MostrarLibrosPrestados(QDialog):
             print(e, f"Linea {e.__traceback__.tb_lineno}")
     
     def borrarPrestamo(self, item: QTreeWidgetItem, _, __):
+        """
+        Función para borrar un préstamo
+
+        Args:
+            item (QTreeWidgetItem): Item seleccionado
+        """
         print(item.text(0))
         QMessageBox.warning(self, "Eliminar", "¿Estás seguro de eliminar el préstamo?", QMessageBox.Yes | QMessageBox.No)
         if QMessageBox.Yes:
@@ -892,6 +1008,11 @@ class MostrarLibrosPrestados(QDialog):
             pass
 
 class MostrarMultas(QDialog):
+    """Muestra las multas en la base de datos
+
+    Args:
+        QDialog:   Ventana de dialogo
+    """
     def __init__(self, parent):
         super().__init__(parent)
         self.parent = parent
@@ -928,6 +1049,8 @@ class MostrarMultas(QDialog):
         self.lista_multas.header().setStyleSheet("QHeaderView::section { background-color: #c7fa9c }")
     
     def actualizar(self):
+        """Actualiza la lista de multas
+        """
         try:
             self.lista_multas.clear()
             try:
@@ -947,6 +1070,11 @@ class MostrarMultas(QDialog):
             print(e, f"Linea {e.__traceback__.tb_lineno}")
             
     def pagarMulta(self, item: QTreeWidgetItem, _, __):
+        """Función para pagar una multa
+
+        Args:
+            item (QTreeWidgetItem): Item seleccionado
+        """
         QMessageBox.warning(self, "Pagar", "¿Estás seguro de pagar la multa?", QMessageBox.Yes | QMessageBox.No)
         if QMessageBox.Yes:
             try:
@@ -962,6 +1090,12 @@ class MostrarMultas(QDialog):
         dialogo.exec_()
         
 class CrearMulta(QDialog):
+    """
+    Crea una multa en la base de datos
+
+    Args:
+        QDialog (QWidget): Ventana de dialogo
+    """
     def __init__(self, parent):
         super().__init__(parent)
         self.parent = parent
@@ -993,6 +1127,9 @@ class CrearMulta(QDialog):
         self.setLayout(layout)
     
     def crear(self):
+        """
+        Crea una multa en la base de datos
+        """
         try:
             usuario = bd.obtenerUsuario(Usuario(self.entrada_usuario.currentText(), "", "", "", "", ""))
             multa = Multa(None, usuario[0], self.entrada_monto.text(), None)
