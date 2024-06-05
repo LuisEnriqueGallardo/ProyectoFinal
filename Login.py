@@ -52,8 +52,8 @@ class LoginWindow(QDialog):
         usuario = Usuario(self.entrada_correo.text(), "", "", "", self.entrada_contrasena.text(), "")
         resultado = bd.verificarUsuario(usuario=usuario)
         if resultado:
-            print("Inicio de sesión exitoso")
-            bdt.usuarioLogueado = 1
+            nuevaSesion = Usuario(resultado[0], resultado[1], resultado[2], resultado[3], resultado[4], resultado[5])
+            self.parent.sesion = nuevaSesion
             self.parent.statusbar.showMessage("Bienvenido " + resultado[1] + " " + resultado[2])
             self.close()
             return True
@@ -67,4 +67,4 @@ class LoginWindow(QDialog):
         Función para abrir la ventana de registro de usuario
         """
         registro = RegistroDialog()
-        registro.dialog.show()
+        registro.show()

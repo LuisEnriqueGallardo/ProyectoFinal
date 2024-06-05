@@ -1,6 +1,4 @@
-from PySide6.QtWidgets import (QApplication, QComboBox, QDialog, 
-                                QHBoxLayout, QMainWindow, QGridLayout, QLabel, QLineEdit, QPushButton, QFrame, 
-                                QVBoxLayout, QWidget, QTreeWidget, QStatusBar, QTreeWidgetItem, QScrollArea, QMessageBox)
+from PySide6.QtWidgets import (QDialog, QHBoxLayout, QLabel, QLineEdit, QPushButton, QVBoxLayout, QStatusBar, QMessageBox)
 from Objetosparabases import *
 from BasedeDatosBiblioteca import BasedeDatos as bdt
 
@@ -16,6 +14,7 @@ class RegistroDialog(QDialog):
         super().__init__()
         self.setWindowTitle("Registro")
         self.setMaximumSize(800, 600)
+        self.statusbar = QStatusBar()
 
         
         self.layout_registro = QVBoxLayout()
@@ -79,9 +78,15 @@ class RegistroDialog(QDialog):
     
     def registrar(self):
         telefono = int(self.entrada_telefono.text().replace("-", ""))
-        if bd.registrarUsuario(Usuario(self.entrada_usuario.text(), self.entrada_nombre.text(), self.entrada_apellido.text(), self.entrada_correo.text(), self.entrada_contrasena.text(), telefono)):
-            self.close()
-        else:
+        try:
+            registro = bd.registrarUsuario(Usuario(self.entrada_usuario.text(), self.entrada_nombre.text(), self.entrada_apellido.text(), self.entrada_correo.text(), self.entrada_contrasena.text(), telefono))
+            try:
+                if registro[1]:
+                    QMessageBox.warning(self, "Error", "El nombre de usuario ya existe")
+            except:
+                QMessageBox.information(self, "Registro exitoso", "Registro exitoso")
+                self.close()
+        except:
             print("Registro fallido")
             
     def confirmarContrasena(self):

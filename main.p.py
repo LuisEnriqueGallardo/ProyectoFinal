@@ -11,6 +11,7 @@ from IngresarLibros import IngresarLibroDialog
 from Dialogos import *
 
 bd = bdt()
+global sesionIniciada
 sesionIniciada = False
 fuente = QFont("Times New Roman", 12)
         
@@ -23,6 +24,7 @@ class VentanaPrincipal(QMainWindow):
         self.setWindowTitle("Biblioteca")
         self.setMinimumSize(1280, 720)
         self.arbol = QTreeWidget()
+        self.sesion = None
         
         widgetPrincipal = QWidget()
         
@@ -78,7 +80,7 @@ class VentanaPrincipal(QMainWindow):
         self.actualizarInterfaz("Libros")
         self.ultimoIndex = None
 
-    def actualizarInterfazParaUsuario(self, current):
+    def actualizarInterfaz(self, current):
         """
         Actualiza la interfaz de la ventana principal
 
@@ -87,6 +89,10 @@ class VentanaPrincipal(QMainWindow):
         """
         index = current.lower()
         self.arbol.clear()
+        try:
+            self.arbol.itemDoubleClicked.disconnect()
+        except Exception as e:
+            pass
         
         if index == "libros":
             self.arbol.setHeaderLabels(["Titulo", "Editorial", "Año Publicación", "ISBN", "Genero", "Stock"])
@@ -137,104 +143,102 @@ class VentanaPrincipal(QMainWindow):
             self.etiquetaPrincipal.setText("Comentarios")
             self.arbol.setHeaderLabels(["Libro", "Usuario", "Comentario"])
             return
-        
-    def actualizarInterfazEmpleado(self, current):
-        """
-        Actualiza la interfaz de la ventana principal para un empleado
 
-        Args:
-            current: str - El índice del menú principal
-        """
-        index = current.lower()
-        self.arbol.clear()
-        
-        if index == "libros":
-            self.arbol.setHeaderLabels(["Titulo", "Editorial", "Año Publicación", "ISBN", "Genero", "Stock"])
-            self.etiquetaPrincipal.setText("Libros")
-            libros = bd.obtenerLibros()
-            self.vaciarLayout(self.buttonLayout)
-            
-            for libro in libros:
-                button = QPushButton(libro[1])
-                self.buttonLayout.addWidget(button)
-                libro = Libro(libro[0], libro[1], libro[2], libro[3], libro[4], None, libro[5])
-                button.clicked.connect(partial(self.seleccionarLibro, libro=libro))
-        
-        elif index in ("autores", "editorial", "generos"):
-            self.arbol.setHeaderLabels(["Nombre", "Libros"])
-            if index == "autores":
-                self.etiquetaPrincipal.setText("Autores")
-                autores = bd.obtenerAutores()
-                if autores:
-                    self.vaciarLayout(self.buttonLayout)
-                    
-                    for autor in autores:
-                        item = QPushButton(autor[0])
-                        self.buttonLayout.addWidget(item)
-                        item.clicked.connect(partial(self.seleccionarAutor, autor=autor))
-            if index == "editorial":
-                self.etiquetaPrincipal.setText("Editoriales")
-                editoriales = bd.obtenerEditoriales()
-                if editoriales:
-                    self.vaciarLayout(self.buttonLayout)
-                    
-                    for editorial in editoriales:
-                        item = QPushButton(editorial[0])
-                        self.buttonLayout.addWidget(item)
-                        item.clicked.connect(partial(self.seleccionarEditorial, editorial=editorial))
-            if index == "generos":
-                self.etiquetaPrincipal.setText("Generos")
-                generos = bd.consultarGeneros()
-                if generos:
-                    self.vaciarLayout(self.buttonLayout)
-                    
-                    for genero in generos:
-                        item = QPushButton(genero[0])
-                        self.buttonLayout.addWidget(item)
-                        item.clicked.connect(partial(self.seleccionarGenero, genero=genero[0]))
-                return
-        elif index == "comentarios":
-            self.etiquetaPrincipal.setText("Comentarios")
-            self
-        
     def login(self):
         """
         Muestra la ventana de inicio de sesión
         """
-        self.loginW = LoginWindow(self)
-        self.loginW.exec()
-        if bd.usuarioLogueado == 1:
-            self.borrar.activated.connect(self.eliminar_libro)
-            self.menuArchivo.addAction("Ingresar libro").triggered.connect(self.ingresarLibro)
-            self.editarBoton = self.menuEditar.addAction("Editar")
-            self.editarActual()
+        try:
+            global sesionIniciada
+            
+            if sesionIniciada:
+                QMessageBox.information(self, "Sesión iniciada", "Ya has iniciado sesión. Reinicia el programa para iniciar sesión con otra cuenta.")
+                return
+            
+            self.loginW = LoginWindow(self)
+            if self.loginW.exec():
+                self.statusbar.showMessage(f"Bienvenido {bd.usuarioLogueado[1]} {bd.usuarioLogueado[2]}")
+            
+            if (bd.usuarioLogueado == 1 or bd.usuarioLogueado == 2) and not sesionIniciada:
+                sesionIniciada = True
+                self.borrar.activated.connect(self.eliminar_libro)
+                self.menuArchivo.addAction("Ingresar libro").triggered.connect(self.ingresarLibro)
+                self.editarBoton = self.menuEditar.addAction("Editar")
+                
+                staff = self.menuSuperior.addMenu("Staff")
+                
+                staff.addAction("Usuarios").triggered.connect(lambda: self.mostrarUsuarios())
+                staff.addAction("Reservas").triggered.connect(lambda: self.mostrarReservas())
+                self.editarActual()
+                if bd.usuarioLogueado == 2:
+                    administracion = self.menuSuperior.addMenu("Administración")
+                    empleados = administracion.addAction("Empleados")
+                    empleados.triggered.connect(lambda: self.mostrarEmpleados())
+                    self.editarActual()
+        except Exception as e:
+            print(e, f"Linea {e.__traceback__.tb_lineno}")
+
+    def mostrarReservas(self):
+        """
+        Muestra la ventana de reservas
+        """
+        try:
+            ventanaReservas = MostrarReservaciones(self)
+            ventanaReservas.exec()
+        except Exception as e:
+            print(e, f"Linea {e.__traceback__.tb_lineno}")
+            
+    def mostrarEmpleados(self):
+        """
+        Muestra la ventana de administración de empleados
+        """
+        try:
+            ventanaEmpleados = MostrarEmpleados(self)
+            ventanaEmpleados.exec()
+        except Exception as e:
+            print(e, f"Linea {e.__traceback__.tb_lineno}")
+            
+    def mostrarUsuarios(self):
+        """
+        Muestra la ventana de administración de usuarios
+        """
+        try:
+            ventanaUsuarios = MostrarUsuarios(self)
+            ventanaUsuarios.exec()
+        except Exception as e:
+            print(e, f"Linea {e.__traceback__.tb_lineno}")
         
     def ingresarLibro(self):
         """
         Muestra la ventana para ingresar un libro
         """
-        print("Ingresando libro.")
-        self.ingresarLibroDialog = IngresarLibroDialog(self)
-        self.ingresarLibroDialog.exec()
-        self.actualizarInterfaz("Libros")
+        try:
+            self.ingresarLibroDialog = IngresarLibroDialog(self)
+            self.ingresarLibroDialog.exec()
+            self.actualizarInterfaz("Libros")
+        except Exception as e:
+            print(e, f"Linea {e.__traceback__.tb_lineno}")
         
     def editarActual(self):
         """
         Conecta el atajo de teclado para editar el objeto que esté elegido
         """
-        self.desconectarSlots()
-        if self.menuPrincipal.currentText() == "Libros":
-            self.editarBoton.triggered.connect(self.editar_libro)
-            self.AtajoEditar.activated.connect(self.editar_libro)
-        elif self.menuPrincipal.currentText() == "Autores":
-            self.editarBoton.triggered.connect(self.editar_autor)
-            self.AtajoEditar.activated.connect(self.editar_autor)
-        elif self.menuPrincipal.currentText() == "Editorial":
-            self.editarBoton.triggered.connect(self.editar_editorial)
-            self.AtajoEditar.activated.connect(self.editar_editorial)
-        elif self.menuPrincipal.currentText() == "Generos":
-            self.editarBoton.triggered.connect(self.editar_genero)
-            self.AtajoEditar.activated.connect(self.editar_genero)
+        try:
+            self.desconectarSlots()
+            if self.menuPrincipal.currentText() == "Libros":
+                self.editarBoton.triggered.connect(self.editar_libro)
+                self.AtajoEditar.activated.connect(self.editar_libro)
+            elif self.menuPrincipal.currentText() == "Autores":
+                self.editarBoton.triggered.connect(self.editar_autor)
+                self.AtajoEditar.activated.connect(self.editar_autor)
+            elif self.menuPrincipal.currentText() == "Editorial":
+                self.editarBoton.triggered.connect(self.editar_editorial)
+                self.AtajoEditar.activated.connect(self.editar_editorial)
+            elif self.menuPrincipal.currentText() == "Generos":
+                self.editarBoton.triggered.connect(self.editar_genero)
+                self.AtajoEditar.activated.connect(self.editar_genero)
+        except Exception as e:
+            print(e, f"Linea {e.__traceback__.tb_lineno}")
         
     def desconectarSlots(self):
         try:
@@ -259,19 +263,26 @@ class VentanaPrincipal(QMainWindow):
             pass
         
     def ajustarColumnas(self):
-        for i in range(self.arbol.columnCount()):
-            self.arbol.resizeColumnToContents(i)
-        self.arbol.header().setStyleSheet("QHeaderView::section { background-color: #9bfbe0 }")
+        try:
+            for i in range(self.arbol.columnCount()):
+                self.arbol.resizeColumnToContents(i)
+            self.arbol.header().setStyleSheet("QHeaderView::section { background-color: #9bfbe0 }")
+        except Exception as e:
+            print(e, f"Linea {e.__traceback__.tb_lineno}")
     
     def enDobleClic(self, item: QTreeWidgetItem):
-        libro = bd.conseguirLibro(Libro(None, item.text(0), None, None, None, None, None))
-        self.seleccionActual = Libro(libro[0], libro[1], libro[2], libro[3], libro[4], None, libro[5])
-        if bd.usuarioLogueado == 1:
-            self.editar_libro()
-        else:
-            mostrarLibroDialog = MostrarLibro(self, self.seleccionActual)
-            mostrarLibroDialog.exec()
-                  
+        try:
+            libro = bd.conseguirLibro(Libro(None, item.text(0), None, None, None, None, None))
+            self.seleccionActual = Libro(libro[0], libro[1], libro[2], libro[3], libro[4], None, libro[5])
+            if self.sesion:
+                if bd.usuarioLogueado == 1 or bd.usuarioLogueado == 2:
+                    self.editar_libro()
+                else:
+                    mostrarLibroDialog = MostrarLibro(self, self.seleccionActual)
+                    mostrarLibroDialog.exec()
+        except Exception as e:
+            print(e, f"Linea {e.__traceback__.tb_lineno}")
+            
     def seleccionarLibro(self, libro: Libro):
         """
         Muestra la información de un libro seleccionado
@@ -279,29 +290,31 @@ class VentanaPrincipal(QMainWindow):
         Args:
             libro (Libro): El libro seleccionado 
         """
-        
-        self.seleccionActual = libro
-        if bd.usuarioLogueado == 1:
-            self.editarActual()
-        
-        self.arbol.clear()
-        self.arbol.setHeaderLabels(["Titulo", "Editorial", "Año Publicación", "ISBN", "Genero", "Stock"])
-        self.contenedorCentral.addWidget(self.arbol)
-        self.statusBar().showMessage(f"Libro seleccionado: {libro.nombre}")
-        self.etiquetaPrincipal.setText(f"Libro: {libro.nombre}")
+        try:
+            self.seleccionActual = libro
+            if bd.usuarioLogueado == 1 or bd.usuarioLogueado == 2:
+                self.editarActual()
+            
+            self.arbol.clear()
+            self.arbol.setHeaderLabels(["Titulo", "Editorial", "Año Publicación", "ISBN", "Genero", "Stock"])
+            self.contenedorCentral.addWidget(self.arbol)
+            self.statusBar().showMessage(f"Libro seleccionado: {libro.nombre}")
+            self.etiquetaPrincipal.setText(f"Libro: {libro.nombre}")
 
-        item = QTreeWidgetItem(self.arbol)
-        libro.genero = bd.consultarGeneroPorLibro(libro)
-        self.seleccionActual = libro
-        
-        item.setText(0, str(libro.nombre))
-        item.setText(1, str(libro.editorial))
-        item.setText(2, str(libro.anio_publicacion))
-        item.setText(3, str(libro.ISBN))
-        item.setText(4, str(libro.genero))
-        item.setText(5, str(libro.cantidad_disponible))
-        self.ajustarColumnas()
-        self.arbol.itemDoubleClicked.connect(self.enDobleClic)
+            item = QTreeWidgetItem(self.arbol)
+            libro.genero = bd.consultarGeneroPorLibro(libro)
+            self.seleccionActual = libro
+            
+            item.setText(0, str(libro.nombre))
+            item.setText(1, str(libro.editorial))
+            item.setText(2, str(libro.anio_publicacion))
+            item.setText(3, str(libro.ISBN))
+            item.setText(4, str(libro.genero))
+            item.setText(5, str(libro.cantidad_disponible))
+            self.ajustarColumnas()
+            self.arbol.itemDoubleClicked.connect(self.enDobleClic)
+        except Exception as e:
+            print(e, f"Linea {e.__traceback__.tb_lineno}")
         
     def seleccionarAutor(self, autor):
         """
@@ -310,26 +323,29 @@ class VentanaPrincipal(QMainWindow):
         Args:
             autor (Autor): El autor seleccionado
         """
-        self.autor_seleccionado = Autor(autor[0])
-        if bd.usuarioLogueado == 1:
-            self.editarActual()
-            
-        self.contenedorCentral.removeWidget(self.arbol)
-        self.arbol = QTreeWidget()
-        self.arbol.setHeaderLabels(["Libros"])
-        self.contenedorCentral.addWidget(self.arbol)
-        self.statusBar().showMessage(f"Autor seleccionado: {autor[0]}")
-        libros = bd.obtenerLibrosPorAutor(autor[0])
-        for libro in libros:
-            libroArmado = Libro(libro[0], libro[1], libro[2], libro[3], libro[4], None, libro[5])
-            genero = bd.consultarGeneroPorLibro(libroArmado)
-            libroArmado.genero = genero
-            item = QTreeWidgetItem(self.arbol)
-            self.etiquetaPrincipal.setText(autor[0])
-            item.setText(0, libroArmado.nombre)
-            # self.arbol.itemClicked.connect(lambda: self.seleccionarLibro(libroArmado))
-        self.ajustarColumnas()
-        self.arbol.itemDoubleClicked.connect(self.enDobleClic)
+        try:
+            self.autor_seleccionado = Autor(autor[0])
+            if bd.usuarioLogueado == 1 or bd.usuarioLogueado == 2:
+                self.editarActual()
+                
+            self.contenedorCentral.removeWidget(self.arbol)
+            self.arbol = QTreeWidget()
+            self.arbol.setHeaderLabels(["Libros"])
+            self.contenedorCentral.addWidget(self.arbol)
+            self.statusBar().showMessage(f"Autor seleccionado: {autor[0]}")
+            libros = bd.obtenerLibrosPorAutor(autor[0])
+            for libro in libros:
+                libroArmado = Libro(libro[0], libro[1], libro[2], libro[3], libro[4], None, libro[5])
+                genero = bd.consultarGeneroPorLibro(libroArmado)
+                libroArmado.genero = genero
+                item = QTreeWidgetItem(self.arbol)
+                self.etiquetaPrincipal.setText(autor[0])
+                item.setText(0, libroArmado.nombre)
+                # self.arbol.itemClicked.connect(lambda: self.seleccionarLibro(libroArmado))
+            self.ajustarColumnas()
+            self.arbol.itemDoubleClicked.connect(self.enDobleClic)
+        except Exception as e:
+            print(e, f"Linea {e.__traceback__.tb_lineno}")
             
     def seleccionarGenero(self, genero):
         """
@@ -338,22 +354,25 @@ class VentanaPrincipal(QMainWindow):
         Args:
             genero (str): El género seleccionado
         """
-        self.genero_seleccionado = genero
-        if bd.usuarioLogueado == 1:
-            self.editarActual()
-            
-        self.contenedorCentral.removeWidget(self.arbol)
-        self.arbol = QTreeWidget()
-        self.arbol.setHeaderLabels(["Libros"])
-        self.contenedorCentral.addWidget(self.arbol)
-        self.statusBar().showMessage(f"Genero seleccionado: {genero}")
-        libros = bd.obtenerLibrosPorGenero(genero)
-        self.etiquetaPrincipal.setText(f"Genero: {genero}")
-        for libro in libros:
-            item = QTreeWidgetItem(self.arbol)
-            item.setText(0, libro[0])
-        self.ajustarColumnas()
-        self.arbol.itemDoubleClicked.connect(self.enDobleClic)
+        try:
+            self.genero_seleccionado = genero
+            if bd.usuarioLogueado == 1 or bd.usuarioLogueado == 2:
+                self.editarActual()
+                
+            self.contenedorCentral.removeWidget(self.arbol)
+            self.arbol = QTreeWidget()
+            self.arbol.setHeaderLabels(["Libros"])
+            self.contenedorCentral.addWidget(self.arbol)
+            self.statusBar().showMessage(f"Genero seleccionado: {genero}")
+            libros = bd.obtenerLibrosPorGenero(genero)
+            self.etiquetaPrincipal.setText(f"Genero: {genero}")
+            for libro in libros:
+                item = QTreeWidgetItem(self.arbol)
+                item.setText(0, libro[0])
+            self.ajustarColumnas()
+            self.arbol.itemDoubleClicked.connect(self.enDobleClic)
+        except Exception as e:
+            print(e, f"Linea {e.__traceback__.tb_lineno}")
     
     def seleccionarEditorial(self, editorial: str):
         """
@@ -362,22 +381,25 @@ class VentanaPrincipal(QMainWindow):
         Args:
             editorial (Editorial): La editorial seleccionada
         """
-        self.editorial_seleccionada = editorial[0]
-        if bd.usuarioLogueado == 1:
-            self.editarActual()
-            
-        self.contenedorCentral.removeWidget(self.arbol)
-        self.arbol = QTreeWidget()
-        self.arbol.setHeaderLabels(["Libros"])
-        self.contenedorCentral.addWidget(self.arbol)
-        self.statusBar().showMessage(f"Editorial seleccionada: {editorial[0]}")
-        libros = bd.obtenerLibrosPorEditorial(editorial[0])
-        self.etiquetaPrincipal.setText(f"Editorial: {editorial[0]}")
-        for libro in libros:
-            item = QTreeWidgetItem(self.arbol)
-            item.setText(0, libro[0])
-        self.ajustarColumnas()
-        self.arbol.itemDoubleClicked.connect(self.enDobleClic)
+        try:
+            self.editorial_seleccionada = editorial[0]
+            if bd.usuarioLogueado == 1 or bd.usuarioLogueado == 2:
+                self.editarActual()
+                
+            self.contenedorCentral.removeWidget(self.arbol)
+            self.arbol = QTreeWidget()
+            self.arbol.setHeaderLabels(["Libros"])
+            self.contenedorCentral.addWidget(self.arbol)
+            self.statusBar().showMessage(f"Editorial seleccionada: {editorial[0]}")
+            libros = bd.obtenerLibrosPorEditorial(editorial[0])
+            self.etiquetaPrincipal.setText(f"Editorial: {editorial[0]}")
+            for libro in libros:
+                item = QTreeWidgetItem(self.arbol)
+                item.setText(0, libro[0])
+            self.ajustarColumnas()
+            self.arbol.itemDoubleClicked.connect(self.enDobleClic)
+        except Exception as e:
+            print(e, f"Linea {e.__traceback__.tb_lineno}")
     
     def vaciarLayout(self, layout):
         """
@@ -386,63 +408,81 @@ class VentanaPrincipal(QMainWindow):
         Args:
             layout (QWidget): El layout a vaciar
         """
-        while layout.count():
-            child = layout.takeAt(0)
-            if child.widget():
-                child.widget().deleteLater()
+        try:            
+            while layout.count():
+                child = layout.takeAt(0)
+                if child.widget():
+                    child.widget().deleteLater()
+        except Exception as e:
+            print(e, f"Linea {e.__traceback__.tb_lineno}")
                 
     def editar_libro(self):
         """
         Muestra la ventana para editar un libro seleccionado
         """
-        self.editarLibroDialog = EditarLibroDialog(self, self.seleccionActual)
-        self.editarLibroDialog.exec()
-        if self.editarLibroDialog.result() == 1:
-            self.actualizarInterfaz("Libros")
-            self.seleccionarLibro(self.seleccionActual)
-        else:
-            self.statusBar().showMessage("No se ha editado ningún libro.")
+        try:            
+            self.editarLibroDialog = EditarLibroDialog(self, self.seleccionActual)
+            self.editarLibroDialog.exec()
+            if self.editarLibroDialog.result() == 1:
+                self.actualizarInterfaz("Libros")
+                self.seleccionarLibro(self.seleccionActual)
+            else:
+                self.statusBar().showMessage("No se ha editado ningún libro.")
+        except Exception as e:
+            print(e, f"Linea {e.__traceback__.tb_lineno}")
 
     def eliminar_libro(self):
         """
         Elimina un libro seleccionado
         """
-        if not self.seleccionActual:
-            self.statusBar().showMessage("No se ha seleccionado ningún libro.")
-            return
+        try:
+            if not self.seleccionActual:
+                self.statusBar().showMessage("No se ha seleccionado ningún libro.")
+                return
 
-        respuesta = QMessageBox.question(self, "Confirmación", f"¿Estás seguro de que quieres eliminar el libro '{self.seleccionActual}'?", QMessageBox.Yes | QMessageBox.No)
-        if respuesta == QMessageBox.Yes:
-            if bd.eliminarLibro(self.seleccionActual):
-                QMessageBox.information(self, "Éxito", f"El libro '{self.seleccionActual.nombre}' ha sido eliminado correctamente.")
-                # Actualizar la interfaz después de eliminar el libro
-                self.actualizarInterfaz("Libros")
-            else:
-                QMessageBox.warning(self, "Error", "No se pudo eliminar el libro.")
+            respuesta = QMessageBox.question(self, "Confirmación", f"¿Estás seguro de que quieres eliminar el libro '{self.seleccionActual}'?", QMessageBox.Yes | QMessageBox.No)
+            if respuesta == QMessageBox.Yes:
+                if bd.eliminarLibro(self.seleccionActual):
+                    QMessageBox.information(self, "Éxito", f"El libro '{self.seleccionActual.nombre}' ha sido eliminado correctamente.")
+                    # Actualizar la interfaz después de eliminar el libro
+                    self.actualizarInterfaz("Libros")
+                else:
+                    QMessageBox.warning(self, "Error", "No se pudo eliminar el libro.")
+        except Exception as e:
+            print(e, f"Linea {e.__traceback__.tb_lineno}")
 
     def editar_autor(self):
         """
         Muestra la ventana para editar un autor seleccionado
         """
-        self.editarAutor = EditarAutor(self, self.autor_seleccionado)
-        self.editarAutor.exec()
-        self.actualizarInterfaz("Autores")
+        try:
+            self.editarAutor = EditarAutor(self, self.autor_seleccionado)
+            self.editarAutor.exec()
+            self.actualizarInterfaz("Autores")
+        except Exception as e:
+            print(e, f"Linea {e.__traceback__.tb_lineno}")
         
     def editar_editorial(self):
         """
         Muestra la ventana para editar una editorial seleccionada
         """
-        self.editarEditorial = EditarEditorial(self, self.editorial_seleccionada)
-        self.editarEditorial.exec()
-        self.actualizarInterfaz("Editorial")
+        try:
+            self.editarEditorial = EditarEditorial(self, self.editorial_seleccionada)
+            self.editarEditorial.exec()
+            self.actualizarInterfaz("Editorial")
+        except Exception as e:
+            print(e, f"Linea {e.__traceback__.tb_lineno}")
         
     def editar_genero(self):
         """
         Muestra la ventana para editar un género seleccionado
         """
-        self.editarGenero = EditarGenero(self, self.genero_seleccionado)
-        self.editarGenero.exec()
-        self.actualizarInterfaz("Generos")
+        try:
+            self.editarGenero = EditarGenero(self, self.genero_seleccionado)
+            self.editarGenero.exec()
+            self.actualizarInterfaz("Generos")
+        except Exception as e:
+            print(e, f"Linea {e.__traceback__.tb_lineno}")
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)

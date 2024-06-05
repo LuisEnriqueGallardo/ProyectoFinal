@@ -66,6 +66,45 @@ class BasedeDatos:
         """
         self.conn.close()
         
+    def cerrarSesion(self):
+        """
+        Función para cerrar la sesión en la base de datos
+        """
+        BasedeDatos.usuarioLogueado = 0
+        print("Sesión cerrada.", BasedeDatos.usuarioLogueado)
+        
+    def verificarEmpleado(self, usuario: Usuario):
+        """
+        Función para verificar si el empleado existe en la base de datos
+
+        Args:
+            usuario (Usuario): Objeto de la clase Usuario
+
+        Returns:
+            Bool: Regresa verdadero si el empleado existe, falso si no
+            Resultado: Regresa el resultado de la consulta
+        """
+        try:
+            self.__conectar()
+            
+            sql = "select esAdministrador from usuarios, empleados where nombre = nombres and apellido = apellidos and nombreUsuario = %s and contrasena = sha2(%s, 256);"
+            param = (usuario.nombreUsuario, usuario.contrasena)
+
+            cursor = self.conn.cursor()
+            cursor.execute(sql, param)
+
+            resultado = cursor.fetchone()
+
+            if resultado is None:
+                return None
+            else:
+                return resultado
+        except IntegrityError as e:
+            print(e, f"Linea {e.__traceback__.tb_lineno}")
+            return False
+        finally:
+            self.__desconectar()
+        
     def verificarUsuario(self, usuario):
         """
         Función para verificar si el usuario existe en la base de datos
@@ -75,7 +114,7 @@ class BasedeDatos:
 
         Returns:
             Bool: Regresa verdadero si el usuario existe, falso si no
-            Resultado: Regresa el resultado de la consulta
+            Resultado: Regresa los datos del usuario
         """
         try:
             self.__conectar()
@@ -91,6 +130,11 @@ class BasedeDatos:
             if resultado is None:
                 return False
             else:
+                if self.verificarEmpleado(usuario):
+                    if self.verificarEmpleado(usuario)[0] == 0:
+                        BasedeDatos.usuarioLogueado = 1
+                    elif self.verificarEmpleado(usuario)[0] == 1:
+                        BasedeDatos.usuarioLogueado = 2
                 return resultado
         except IntegrityError as e:
             print(e, f"Linea {e.__traceback__.tb_lineno}")
@@ -120,6 +164,32 @@ class BasedeDatos:
             return False
         finally:
             self.__desconectar()
+            
+    def obtenerUsuario(self, usuario: Usuario):
+        """
+        Función para obtener un usuario de la base de datos
+
+        Args:
+            usuario (Usuario): Objeto de la clase Usuario
+
+        Returns:
+            usuario: Regresa el usuario de la base de datos
+            Bool: Regresa falso si hay un error
+        """
+        try:
+            self.__conectar()
+            
+            sql = "SELECT nombreUsuario, nombre, apellido, correo, telefono FROM usuarios WHERE nombreUsuario = %s;"
+            param = (usuario.nombreUsuario,)
+            cursor = self.conn.cursor()
+            cursor.execute(sql, param)
+            usuario = cursor.fetchone()
+            return usuario
+        except IntegrityError as e:
+            print(e, f"Linea {e.__traceback__.tb_lineno}")
+            return False
+        finally:
+            self.__desconectar()
     
     def registrarUsuario(self, usuario: Usuario):
         """
@@ -144,6 +214,9 @@ class BasedeDatos:
             return True
         except IntegrityError as e:
             print(e, f"Linea {e.__traceback__.tb_lineno}")
+            if e.errno == 1062:
+                print("El usuario ya existe.")
+                return False, "El usuario ya existe."
             return False
         finally:
             self.__desconectar()
@@ -164,6 +237,32 @@ class BasedeDatos:
             cursor.execute(sql)
             libros = cursor.fetchall()
             return libros
+        except IntegrityError as e:
+            print(e, f"Linea {e.__traceback__.tb_lineno}")
+            return False
+        finally:
+            self.__desconectar()
+            
+    def obtenerLibro(self, libro: Libro):
+        """
+        Función para obtener un libro de la base de datos
+
+        Args:
+            libro (Libro): Objeto de la clase Libro
+
+        Returns:
+            libro: Regresa el libro de la base de datos
+            Bool: Regresa falso si hay un error
+        """
+        try:
+            self.__conectar()
+            
+            sql = "SELECT id_libro, nombre, editorial, anio_publicacion, ISBN, cantidad_disponible FROM libros WHERE nombre = %s;"
+            param = (libro.nombre,)
+            cursor = self.conn.cursor()
+            cursor.execute(sql, param)
+            libro = cursor.fetchone()
+            return libro
         except IntegrityError as e:
             print(e, f"Linea {e.__traceback__.tb_lineno}")
             return False
@@ -684,6 +783,202 @@ class BasedeDatos:
             cursor.execute(sql, param)
             self.conn.commit()
             return True
+        except IntegrityError as e:
+            print(e, f"Linea {e.__traceback__.tb_lineno}")
+            return False
+        except Exception as e:
+            print(e, f"Linea {e.__traceback__.tb_lineno}")
+            return False
+        finally:
+            self.__desconectar()
+    
+    def actualizarUsuario(self, nombreAntiguo: str, usuario: Usuario):
+        """
+        Actualiza el usuario en la base de datos
+
+        Args:
+            usuario (Usuario): Objeto de clase Usuario
+            nombreAntiguo (str): Nombre actual del Usuario
+
+        Returns:
+            Bool: Verdadero si actualiza el usuario correctamente, falso si no
+        """
+        try:
+            self.__conectar()
+            sql = "UPDATE usuarios SET nombreUsuario = %s, nombre = %s, apellido = %s, correo = %s, telefono = %s WHERE nombreUsuario = %s;"
+            param = (usuario.nombreUsuario, usuario.nombre, usuario.apellido, usuario.correo, usuario.telefono, nombreAntiguo)
+            cursor = self.conn.cursor()
+            cursor.execute(sql, param)
+            self.conn.commit()
+            return True
+        except IntegrityError as e:
+            print(e, f"Linea {e.__traceback__.tb_lineno}")
+            return False
+        except Exception as e:
+            print(e, f"Linea {e.__traceback__.tb_lineno}")
+            return False
+        finally:
+            self.__desconectar()
+
+    def obtenerEmpleados(self):
+        """
+        Obtiene los empleados de la base de datos
+
+        Returns:
+            empleados: Los empleados encontrados
+            bool: False si ocurre un error
+        """
+        try:
+            self.__conectar()
+            
+            sql = "SELECT id_empleado, nombres, apellidos, nombreUsuario, esAdministrador FROM empleados, usuarios where nombres = nombre and apellidos = apellido;"
+            cursor = self.conn.cursor()
+            cursor.execute(sql)
+            empleados = cursor.fetchall()
+            return empleados
+        except IntegrityError as e:
+            print(e, f"Linea {e.__traceback__.tb_lineno}")
+            return False
+        finally:
+            self.__desconectar()
+            
+    def obtenerEmpleado(self, empleado: Empleado):
+        """
+        Obtiene un empleado de la base de datos
+
+        Args:
+            empleado (Empleado): Objeto de clase Empleado
+
+        Returns:
+            empleado: El empleado encontrado
+            bool: False si ocurre un error
+        """
+        try:
+            self.__conectar()
+            
+            sql = "SELECT id_empleado, nombres, apellidos, nombreUsuario, esAdministrador FROM empleados, usuarios where nombres = nombre and apellidos = apellido and nombreUsuario = %s;"
+            param = (empleado.nombreUsuario,)
+            cursor = self.conn.cursor()
+            cursor.execute(sql, param)
+            empleado = cursor.fetchall()
+            print(empleado)
+            return empleado
+        except IntegrityError as e:
+            print(e, f"Linea {e.__traceback__.tb_lineno}")
+            return False
+        finally:
+            self.__desconectar()
+        
+    def actualizarEmpleado(self, nombreAnterior: str, empleado: Empleado):
+        """
+        Actualiza el empleado en la base de datos
+
+        Args:
+            empleado (Empleado): Objeto de clase Empleado
+            nuevoNombreUsuario (str): Nombre de usuario nuevo
+
+        Returns:
+            Bool: Verdadero si actualiza el empleado correctamente, falso si no
+        """
+        try:
+            self.__conectar()
+            sql = "UPDATE empleados INNER JOIN usuarios ON empleados.nombres = usuarios.nombre AND empleados.apellidos = usuarios.apellido SET nombres = %s, apellidos = %s, nombreUsuario = %s, esAdministrador = %s WHERE usuarios.nombreUsuario = %s;"
+            param = (empleado.nombre, empleado.apellido, empleado.nombreUsuario, empleado.administrador, nombreAnterior)
+            cursor = self.conn.cursor()
+            cursor.execute(sql, param)
+            self.conn.commit()
+            return True
+        except IntegrityError as e:
+            print(e, f"Linea {e.__traceback__.tb_lineno}")
+            return False
+        except Exception as e:
+            print(e, f"Linea {e.__traceback__.tb_lineno}")
+            return False
+        finally:
+            self.__desconectar()
+            
+    def obtenerReservas(self):
+        """
+        Obtiene las reservas de la base de datos
+
+        Returns:
+            reservas: Las reservas encontradas
+            bool: False si ocurre un error
+        """
+        try:
+            self.__conectar()
+            
+            sql = "SELECT id_reserva, usuarios.nombreUsuario, reserva, fecha_reserva FROM reservas INNER JOIN usuarios using(id_usuario);"
+            cursor = self.conn.cursor()
+            cursor.execute(sql)
+            reservas = cursor.fetchall()
+            return reservas
+        except IntegrityError as e:
+            print(e, f"Linea {e.__traceback__.tb_lineno}")
+            return False
+        finally:
+            self.__desconectar()
+
+    def reservarLibro(self, libro: Libro, usuario: Usuario):
+        """
+        Reserva un libro en la base de datos
+
+        Args:
+            libro (Libro): Objeto de clase Libro
+            usuario (Usuario): Objeto de clase Usuario
+
+        Returns:
+            Bool: Verdadero si reserva el libro correctamente, falso si no
+        """
+        try:
+            self.__conectar()
+            sql = "insert into reservas values (0 , %s, %s, %s,NOW());"
+            param = (usuario.nombreUsuario, libro.id_libro, libro.nombre)
+            print(param)
+            cursor = self.conn.cursor()
+            cursor.execute(sql, param)
+            self.conn.commit()
+
+            sql = "update libros set cantidad_disponible = cantidad_disponible - 1 where id_libro = %s;"
+            param = (libro.id_libro,)
+            cursor.execute(sql, param)
+            self.conn.commit()
+            return True
+        
+        except IntegrityError as e:
+            print(e, f"Linea {e.__traceback__.tb_lineno}")
+            return False
+        except Exception as e:
+            print(e, f"Linea {e.__traceback__.tb_lineno}")
+            return False
+        finally:
+            self.__desconectar()
+            
+    def eliminarReserva(self, id_reserva, libro: Libro):
+        """
+        Elimina una reserva de la base de datos
+
+        Args:
+            id_reserva (int): ID de la reserva
+            libro (Libro): Objeto de clase Libro
+
+        Returns:
+            Bool: Verdadero si elimina la reserva correctamente, falso si no
+        """
+        try:
+            self.__conectar()
+            sql = "delete from reservas where id_reserva = %s;"
+            param = (id_reserva,)
+            cursor = self.conn.cursor()
+            cursor.execute(sql, param)
+            self.conn.commit()
+
+            sql = "update libros set cantidad_disponible = cantidad_disponible + 1 where id_libro = %s;"
+            param = (libro.id_libro,)
+            cursor.execute(sql, param)
+            self.conn.commit()
+            return True
+        
         except IntegrityError as e:
             print(e, f"Linea {e.__traceback__.tb_lineno}")
             return False

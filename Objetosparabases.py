@@ -2,15 +2,13 @@ class Usuario:
     """
     Objeto usuario para manejar a los usuarios con sus atributos
     """
-    def __init__(self, nombreUsuario, nombre, apellido, correo, contrasena, telefono = "", empleado: bool = False, administrador: bool = False):
+    def __init__(self, nombreUsuario, nombre, apellido, correo, contrasena, telefono = ""):
         self.nombreUsuario = nombreUsuario
         self.nombre = nombre
         self.apellido = apellido
         self.correo = correo
-        self.contrasena = contrasena
         self.telefono = telefono
-        self.empleado = empleado
-        self.administrador = administrador
+        self.contrasena = contrasena
         
 class Libro:
     """
@@ -32,3 +30,14 @@ class Autor:
     def __init__(self, nombre, libros = None):
         self.nombre = nombre
         self.libros = libros
+
+class Empleado:
+    """
+    Objeto para manejar a los empleados y sus atributos
+    """
+    def __init__(self, numeroEmpleado, nombre, apellido, nombreUsuario: str, administrador: int = 0):
+        self.numeroEmpleado = numeroEmpleado
+        self.nombre = nombre
+        self.apellido = apellido
+        self.nombreUsuario = nombreUsuario
+        self.administrador = administrador
