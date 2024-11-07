@@ -1,3 +1,0 @@
-Buscar un nuevo diseño para la ventana
-Buscar una validación de identidad
-Buscar una referenciación por zona de la biblioteca

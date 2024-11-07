@@ -927,7 +927,7 @@ class MostrarReservaciones(QDialog):
             bd.eliminarReserva(reserva.id_reserva, Libro(libro[0], libro[1], libro[2], libro[3], libro[4], None, libro[5]))
             self.actualizar()
         else:
-            pass
+            return
         
 class MostrarLibrosPrestados(QDialog):
     """Muestra los libros prestados en la base de datos
